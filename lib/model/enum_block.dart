@@ -147,4 +147,54 @@ extension BlockNumberExtension on BlockNumber {
         return Color(0xffcec0b2);
     }
   }
+
+  ColorTween get animation {
+    switch (this) {
+      case BlockNumber.ONE:
+        return ColorTween(begin: BlockNumber.ZERO.color, end: BlockNumber.ONE.color);
+      case BlockNumber.TWO:
+        return ColorTween(begin: BlockNumber.ONE.color, end:  BlockNumber.TWO.color);
+      case BlockNumber.THREE:
+        return ColorTween(begin: BlockNumber.TWO.color, end:  BlockNumber.THREE.color);
+      case BlockNumber.FOUR:
+        return ColorTween(begin: BlockNumber.THREE.color, end:  BlockNumber.FOUR.color);
+      case BlockNumber.FIVE:
+        return ColorTween(begin: BlockNumber.FOUR.color, end:  BlockNumber.FIVE.color);
+      case BlockNumber.SIX:
+        return ColorTween(begin: BlockNumber.FIVE.color, end:  BlockNumber.SIX.color);
+      case BlockNumber.SEVEN:
+        return ColorTween(begin: BlockNumber.SIX.color, end:  BlockNumber.SEVEN.color);
+      case BlockNumber.EIGHT:
+        return ColorTween(begin: BlockNumber.SEVEN.color, end:  BlockNumber.EIGHT.color);
+      case BlockNumber.NINE:
+        return ColorTween(begin: BlockNumber.EIGHT.color, end:  BlockNumber.NINE.color);
+      case BlockNumber.TEN:
+        return ColorTween(begin: BlockNumber.NINE.color, end:  BlockNumber.TEN.color);
+      case BlockNumber.ELEVEN:
+        return ColorTween(begin: BlockNumber.TEN.color, end:  BlockNumber.ELEVEN.color);
+      case BlockNumber.TWELVE:
+        return ColorTween(begin: BlockNumber.ELEVEN.color, end:  BlockNumber.TWELVE.color);
+      case BlockNumber.THIRTEEN:
+        return ColorTween(begin: BlockNumber.TWELVE.color, end:  BlockNumber.THIRTEEN.color);
+      case BlockNumber.FOURTEEN:
+        return ColorTween(begin: BlockNumber.THIRTEEN.color, end:  BlockNumber.FOURTEEN.color);
+      case BlockNumber.FIFTEEN:
+        return ColorTween(begin: BlockNumber.FOURTEEN.color, end:  BlockNumber.FIFTEEN.color);
+      case BlockNumber.SIXTEEN:
+        return ColorTween(begin: BlockNumber.FIFTEEN.color, end:  BlockNumber.SIXTEEN.color);
+      case BlockNumber.SEVENTEEN:
+        return ColorTween(begin: BlockNumber.SIXTEEN.color, end:  BlockNumber.SEVENTEEN.color);
+      default:
+        return ColorTween(begin: BlockNumber.ZERO.color, end:  BlockNumber.ZERO.color);
+    }
+  }
+
+  ColorTween get backAnimation {
+    switch (this) {
+      case BlockNumber.ONE:
+        return ColorTween(begin: BlockNumber.ONE.color, end: BlockNumber.ZERO.color);
+      default:
+        return ColorTween(begin: BlockNumber.ONE.color, end:  BlockNumber.ZERO.color);
+    }
+  }
 }

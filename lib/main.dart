@@ -45,17 +45,11 @@ class GameBoard extends StatefulWidget {
 
 class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
-    duration: const Duration(microseconds: 100),
+    duration: const Duration(milliseconds: 500),
     vsync: this,
   );
 
-  late final Animation<Offset> _offsetAnimation = Tween<Offset>(
-    begin: Offset.zero,
-    end: const Offset(1.5, 0.0),
-  ).animate(CurvedAnimation(
-    parent: _controller,
-    curve: Curves.linear,
-  ));
+//  late final Animation<Color> _colorAnimation = ColorTween(begin:);
 
   double verticalSwipeMaxWidthThreshold = 50.0;
   double verticalSwipeMinDisplacement = 100.0;
@@ -123,30 +117,52 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   Widget createBlock(ValueNotifier<BlockNumber> listener) => Padding(
         padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-        child: SizedBox(
-          height: cellSize,
-          width: cellSize,
-          child: ValueListenableBuilder(
+        child: ValueListenableBuilder(
             valueListenable: listener,
             builder: (context, value, child) {
               var blockNumber = (value as BlockNumber);
-              return Container(
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5.0),
-                    color: blockNumber.color),
-                child: Center(
-                  child: Text(
-                    blockNumber.value == 0 ? "" : "${blockNumber.value}",
-                    style: TextStyle(
-                        fontSize: 50,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold),
+
+              // var _sizeAnimation = Tween(begin: cellSize, end: cellSize)
+              //     .chain(TweenSequence([
+              //       TweenSequenceItem(
+              //           tween: Tween(begin: cellSize + 10, end: cellSize + 10),
+              //           weight: 1),
+              //       TweenSequenceItem(
+              //           tween: Tween(begin: cellSize - 20, end: cellSize - 10),
+              //           weight: 1),
+              //       TweenSequenceItem(
+              //           tween: Tween(begin: cellSize, end: cellSize),
+              //           weight: 1),
+              //     ]))
+              //     .animate(_controller);
+
+
+              var _colorAnimation =
+              blockNumber.value == BlockNumber.ZERO ?
+                blockNumber.backAnimation.animate(_controller) :
+              blockNumber.animation.animate(_controller);
+
+              return AnimatedBuilder(
+                animation: _controller,
+                builder: (context, wid) => Container(
+                  height: cellSize,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5.0),
+                      color: _colorAnimation.value),
+                  child: Center(
+                    child: Text(
+                      blockNumber.value == 0 ? "" : "${blockNumber.value}",
+                      style: TextStyle(
+                          fontSize: 50,
+                          color: blockNumber.value < 8
+                              ? Colors.black54
+                              : Colors.white,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               );
-            },
-          ),
-        ),
+            }),
       );
 
   initGame() {
@@ -178,12 +194,16 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       var next = grid[x][i - 1];
       if (block.isFree && !next.isFree) {
         block.alloc(next.blockNumber.value);
+        _controller.reset();
+        _controller.forward();
         next.free();
       } else if (!block.isFree) {
         if (block.canMerge &&
             next.canMerge &&
             next.blockNumber.value.value == block.blockNumber.value.value) {
           points.value += block.merge();
+          _controller.reset();
+          _controller.forward();
           next.free();
         }
       }
@@ -197,12 +217,16 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       var next = grid[x][i + 1];
       if (block.isFree && !next.isFree) {
         block.alloc(next.blockNumber.value);
+        _controller.reset();
+        _controller.forward();
         next.free();
       } else if (!block.isFree) {
         if (block.canMerge &&
             next.canMerge &&
             next.blockNumber.value.value == block.blockNumber.value.value) {
           points.value += block.merge();
+          _controller.reset();
+          _controller.forward();
           next.free();
         }
       }
@@ -219,6 +243,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           var next = grid[y][i];
           if (!next.isFree && previous.isFree) {
             previous.alloc(next.blockNumber.value);
+            _controller.reset();
+            _controller.forward();
             next.free();
           } else if (!next.isFree && !previous.isFree) {
             if (previous.canMerge &&
@@ -226,6 +252,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 next.blockNumber.value.value ==
                     previous.blockNumber.value.value) {
               points.value += previous.merge();
+              _controller.reset();
+              _controller.forward();
               next.free();
             }
           }
@@ -244,6 +272,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           var next = grid[y + 1][i];
           if (next.isFree && !previous.isFree) {
             next.alloc(previous.blockNumber.value);
+            _controller.reset();
+            _controller.forward();
             previous.free();
           } else if (!next.isFree && !previous.isFree) {
             if (previous.canMerge &&
@@ -251,6 +281,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 next.blockNumber.value.value ==
                     previous.blockNumber.value.value) {
               points.value += next.merge();
+              _controller.reset();
+              _controller.forward();
               previous.free();
             }
           }
@@ -279,7 +311,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     } else if (direction == Direction.down) {
       moveDown();
     }
-    await Future.delayed(const Duration(seconds: 1), () {
+    await Future.delayed(const Duration(milliseconds: 200), () {
       setNextPosition();
     });
     grid.forEach((element) {
@@ -411,3 +443,24 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         ));
   }
 }
+
+// return TweenAnimationBuilder(
+// tween: blockNumber.animation,
+// duration: Duration(milliseconds: 500),
+// builder: (context, value, widget) => Container(
+// decoration: BoxDecoration(
+// borderRadius: BorderRadius.circular(5.0),
+// color: value as Color),
+// child: Center(
+// child: Text(
+// blockNumber.value == 0 ? "" : "${blockNumber.value}",
+// style: TextStyle(
+// fontSize: 50,
+// color: blockNumber.value < 8
+// ? Colors.black54
+//     : Colors.white,
+// fontWeight: FontWeight.bold),
+// ),
+// ),
+// ),
+// );
