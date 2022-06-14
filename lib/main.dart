@@ -72,10 +72,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   late final totalBlocks = widget.blocksPerLine * widget.blocksPerLine;
   late final boardSize = MediaQuery.of(context).size.width - 10;
   late final cellSize = (boardSize / widget.blocksPerLine) - 12.0;
+  ValueNotifier<num> points = ValueNotifier(0);
 
-  late final tiles = <Widget>[];
-
-  late final grid = <List<Block>>[];
+  late final grid = List.generate(
+      widget.blocksPerLine,
+      (_) => List.filled(widget.blocksPerLine,
+          Block("", 0, 0, ValueNotifier<BlockNumber>(BlockNumber.ZERO))),
+      growable: false); //<List<Block>>[];
   late final blocksList = <Block>[];
 
   @override
@@ -118,13 +121,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
   }
 
-  Widget createBlock(Block block) => Padding(
+  Widget createBlock(ValueNotifier<BlockNumber> listener) => Padding(
         padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         child: SizedBox(
           height: cellSize,
           width: cellSize,
           child: ValueListenableBuilder(
-            valueListenable: block.blockNumber,
+            valueListenable: listener,
             builder: (context, value, child) {
               var blockNumber = (value as BlockNumber);
               return Container(
@@ -147,19 +150,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       );
 
   initGame() {
-    for (int i = 0; i < widget.blocksPerLine; i++) {
-      var bw = <Widget>[];
-      var bl = <Block>[];
-      for (int j = 0; j < widget.blocksPerLine; j++) {
-        var block =
-            Block("$i$j", i, j, ValueNotifier<BlockNumber>(BlockNumber.ZERO));
-        bl.add(block);
-        bw.add(createBlock(block));
-      }
-      grid.add(bl);
-      tiles.add(Row(
-        children: bw,
-      ));
+    for (int i = 0; i < totalBlocks; i++) {
+      var x = (i / widget.blocksPerLine).floor();
+      var y = i % widget.blocksPerLine;
+      var block =
+          Block("$x$y", x, y, ValueNotifier<BlockNumber>(BlockNumber.ZERO));
+      block.widget = createBlock(block.blockNumber);
+      grid[x][y] = block;
     }
   }
 
@@ -174,27 +171,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
   }
 
-  // moveHorizontally(List<Block> row) {
-  //   row.forEach((r) {
-  //     for (var i = 0; i < widget.blocksPerLine; i++) {
-  //       if (i + 1 == widget.blocksPerLine) break;
-  //       var block = grid[r.x][i];
-  //       var next = grid[r.x][i + 1];
-  //       if (block.isFree && !next.isFree) {
-  //         block.alloc(next.blockNumber.value);
-  //         next.free();
-  //       } else if (!block.isFree) {
-  //         if (block.canMerge &&
-  //             next.canMerge &&
-  //             next.blockNumber.value.value == block.blockNumber.value.value) {
-  //           block.merge();
-  //           next.free();
-  //         }
-  //       }
-  //     }
-  //   });
-  // }
-
   moveRight(int x) {
     for (var i = widget.blocksPerLine - 1; i >= 0; i--) {
       if (i - 1 == -1) break;
@@ -207,7 +183,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         if (block.canMerge &&
             next.canMerge &&
             next.blockNumber.value.value == block.blockNumber.value.value) {
-          block.merge();
+          points.value += block.merge();
           next.free();
         }
       }
@@ -226,7 +202,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         if (block.canMerge &&
             next.canMerge &&
             next.blockNumber.value.value == block.blockNumber.value.value) {
-          block.merge();
+          points.value += block.merge();
           next.free();
         }
       }
@@ -234,21 +210,24 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   }
 
   moveUp() {
-    // var rev = grid.reversed.toList();
     for (var i = 0; i < widget.blocksPerLine; i++) {
-      for (var j = widget.blocksPerLine - 1; j >= 0; j--) {
-        if (j - 1 == -1) break;
-        var block = grid[j][i];
-        var next = grid[j - 1][i];
-        if (next.isFree && !block.isFree) {
-          next.alloc(block.blockNumber.value);
-          block.free();
-        } else if (!next.isFree && !block.isFree) {
-          if (block.canMerge &&
-              next.canMerge &&
-              next.blockNumber.value.value == block.blockNumber.value.value) {
-            next.merge();
-            block.free();
+      for (var j = 0; j < widget.blocksPerLine; j++) {
+        if (j + 1 >= widget.blocksPerLine) break;
+        for (var y = j + 1; y >= 0; y--) {
+          if (y - 1 < 0) break;
+          var previous = grid[y - 1][i];
+          var next = grid[y][i];
+          if (!next.isFree && previous.isFree) {
+            previous.alloc(next.blockNumber.value);
+            next.free();
+          } else if (!next.isFree && !previous.isFree) {
+            if (previous.canMerge &&
+                next.canMerge &&
+                next.blockNumber.value.value ==
+                    previous.blockNumber.value.value) {
+              points.value += previous.merge();
+              next.free();
+            }
           }
         }
       }
@@ -257,19 +236,23 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   moveDown() {
     for (var i = 0; i < widget.blocksPerLine; i++) {
-      for (var j = 0; j < widget.blocksPerLine; j++) {
-        if (j + 1 >= widget.blocksPerLine) break;
-        var block = grid[j][i];
-        var next = grid[j + 1][i];
-        if (next.isFree && !block.isFree) {
-          next.alloc(block.blockNumber.value);
-          block.free();
-        } else if (!next.isFree && !block.isFree) {
-          if (block.canMerge &&
-              next.canMerge &&
-              next.blockNumber.value.value == block.blockNumber.value.value) {
-            next.merge();
-            block.free();
+      for (var j = widget.blocksPerLine - 1; j >= 0; j--) {
+        if (j - 1 < 0) break;
+        for (var y = j - 1; y < widget.blocksPerLine; y++) {
+          if (y + 1 >= widget.blocksPerLine) break;
+          var previous = grid[y][i];
+          var next = grid[y + 1][i];
+          if (next.isFree && !previous.isFree) {
+            next.alloc(previous.blockNumber.value);
+            previous.free();
+          } else if (!next.isFree && !previous.isFree) {
+            if (previous.canMerge &&
+                next.canMerge &&
+                next.blockNumber.value.value ==
+                    previous.blockNumber.value.value) {
+              points.value += next.merge();
+              previous.free();
+            }
           }
         }
       }
@@ -278,7 +261,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   swipe(Direction direction) async {
     if (direction == Direction.right) {
-      grid.reversed.forEach((row) {
+      grid.forEach((row) {
         row.forEach((col) {
           debugPrint("${col.x} : ${col.y}");
           moveRight(col.x);
@@ -319,83 +302,112 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     DragUpdateDetails? updateHorizontalDragDetails;
 
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 253, 247, 240),
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: SizedBox(
-          width: boardSize,
-          height: boardSize,
-          child: GestureDetector(
-            onVerticalDragStart: (dragDetails) {
-              startVerticalDragDetails = dragDetails;
-            },
-            onVerticalDragUpdate: (dragDetails) {
-              updateVerticalDragDetails = dragDetails;
-            },
-            onVerticalDragEnd: (endDetails) {
-              double dx = updateVerticalDragDetails!.globalPosition.dx -
-                  startVerticalDragDetails!.globalPosition.dx;
-              double dy = updateVerticalDragDetails!.globalPosition.dy -
-                  startVerticalDragDetails!.globalPosition.dy;
-              double velocity = endDetails.primaryVelocity!;
-              //Convert values to be positive
-              if (dx < 0) dx = -dx;
-              if (dy < 0) dy = -dy;
-              double positiveVelocity = velocity < 0 ? -velocity : velocity;
-              if (dx > verticalSwipeMaxWidthThreshold) return;
-              if (dy < verticalSwipeMinDisplacement) return;
-              if (positiveVelocity < verticalSwipeMinVelocity) return;
-              if (velocity < 0) {
-                swipe(Direction.up);
-              } else {
-                swipe(Direction.down);
-              }
-            },
-            onHorizontalDragStart: (dragDetails) {
-              startHorizontalDragDetails = dragDetails;
-            },
-            onHorizontalDragUpdate: (dragDetails) {
-              updateHorizontalDragDetails = dragDetails;
-            },
-            onHorizontalDragEnd: (endDetails) {
-              double dx = updateHorizontalDragDetails!.globalPosition.dx -
-                  startHorizontalDragDetails!.globalPosition.dx;
+        backgroundColor: Color.fromARGB(255, 253, 247, 240),
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: Column(
+          children: [
+            Expanded(
+                flex: 1,
+                child: Container(
+                  margin: EdgeInsets.only(top: 20),
+                  child: ValueListenableBuilder(
+                    valueListenable: points,
+                    builder: (context, value, child) => Text(
+                      "${points.value}",
+                      style: TextStyle(
+                          fontSize: 50,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                )),
+            Expanded(
+              flex: 3,
+              child: Container(
+                height: boardSize,
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5.0),
+                    color: Color(0xffb9aea0)),
+                margin: EdgeInsets.symmetric(horizontal: 10),
+                child: GestureDetector(
+                  onVerticalDragStart: (dragDetails) {
+                    startVerticalDragDetails = dragDetails;
+                  },
+                  onVerticalDragUpdate: (dragDetails) {
+                    updateVerticalDragDetails = dragDetails;
+                  },
+                  onVerticalDragEnd: (endDetails) {
+                    double dx = updateVerticalDragDetails!.globalPosition.dx -
+                        startVerticalDragDetails!.globalPosition.dx;
+                    double dy = updateVerticalDragDetails!.globalPosition.dy -
+                        startVerticalDragDetails!.globalPosition.dy;
+                    double velocity = endDetails.primaryVelocity!;
+                    //Convert values to be positive
+                    if (dx < 0) dx = -dx;
+                    if (dy < 0) dy = -dy;
+                    double positiveVelocity =
+                        velocity < 0 ? -velocity : velocity;
+                    if (dx > verticalSwipeMaxWidthThreshold) return;
+                    if (dy < verticalSwipeMinDisplacement) return;
+                    if (positiveVelocity < verticalSwipeMinVelocity) return;
+                    if (velocity < 0) {
+                      swipe(Direction.up);
+                    } else {
+                      swipe(Direction.down);
+                    }
+                  },
+                  onHorizontalDragStart: (dragDetails) {
+                    startHorizontalDragDetails = dragDetails;
+                  },
+                  onHorizontalDragUpdate: (dragDetails) {
+                    updateHorizontalDragDetails = dragDetails;
+                  },
+                  onHorizontalDragEnd: (endDetails) {
+                    double dx = updateHorizontalDragDetails!.globalPosition.dx -
+                        startHorizontalDragDetails!.globalPosition.dx;
 
-              double dy = updateHorizontalDragDetails!.globalPosition.dy -
-                  startHorizontalDragDetails!.globalPosition.dy;
+                    double dy = updateHorizontalDragDetails!.globalPosition.dy -
+                        startHorizontalDragDetails!.globalPosition.dy;
 
-              double velocity = endDetails.primaryVelocity!.toDouble();
+                    double velocity = endDetails.primaryVelocity!.toDouble();
 
-              if (dx < 0) dx = -dx;
-              if (dy < 0) dy = -dy;
-              double positiveVelocity = velocity < 0 ? -velocity : velocity;
+                    if (dx < 0) dx = -dx;
+                    if (dy < 0) dy = -dy;
+                    double positiveVelocity =
+                        velocity < 0 ? -velocity : velocity;
 
-              if (dx < horizontalSwipeMinDisplacement) return;
-              if (dy > horizontalSwipeMaxHeightThreshold) return;
-              if (positiveVelocity < horizontalSwipeMinVelocity) return;
+                    if (dx < horizontalSwipeMinDisplacement) return;
+                    if (dy > horizontalSwipeMaxHeightThreshold) return;
+                    if (positiveVelocity < horizontalSwipeMinVelocity) return;
 
-              if (velocity < 0) {
-                swipe(Direction.left);
-              } else {
-                swipe(Direction.right);
-              }
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(5.0),
-                  color: Color(0xffb9aea0)),
-              margin: EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: tiles,
+                    if (velocity < 0) {
+                      swipe(Direction.left);
+                    } else {
+                      swipe(Direction.right);
+                    }
+                  },
+                  child: GridView.builder(
+                    physics: NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: widget.blocksPerLine,
+                      childAspectRatio: 1.0,
+                      mainAxisSpacing: 5.0,
+                      crossAxisSpacing: 5.0,
+                    ),
+                    itemCount: widget.blocksPerLine * widget.blocksPerLine,
+                    itemBuilder: (context, index) {
+                      var x = (index / widget.blocksPerLine).floor();
+                      var y = index % widget.blocksPerLine;
+                      return grid[x][y].widget;
+                    },
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
+            Expanded(flex: 1, child: Container())
+          ],
+        ));
   }
 }
