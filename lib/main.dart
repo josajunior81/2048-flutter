@@ -152,6 +152,23 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   ? blockNumber.backAnimation.animate(block.animationController)
                   : blockNumber.animation.animate(block.animationController);
 
+              var fontSize = blockNumber.value < 100 ? 50.0 : 40.0;
+              var variation = block.canMerge ? 0 : 10;
+              var sizeAnimation = TweenSequence<double>([
+                    TweenSequenceItem(
+                        tween: Tween(begin: fontSize, end: fontSize + variation),
+                        weight: 20),
+                    TweenSequenceItem(
+                        tween: Tween(begin: fontSize + variation, end: fontSize - variation),
+                        weight: 20),
+                    TweenSequenceItem(
+                        tween: Tween(begin: fontSize , end: fontSize),
+                        weight: 60),
+                  ])
+                  .animate(block.animationController);
+
+              block.canMerge = true;
+
               return AnimatedBuilder(
                 animation: block.animationController,
                 builder: (context, wid) => Container(
@@ -163,7 +180,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                     child: Text(
                       blockNumber.value == 0 ? "" : "${blockNumber.value}",
                       style: TextStyle(
-                          fontSize: 50,
+                          fontSize: sizeAnimation.value,
                           color: blockNumber.value < 8
                               ? Colors.black54
                               : Colors.white,
@@ -303,12 +320,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       hasMoved = false;
       setNextPosition();
     }
-
-    for (var element in grid) {
-      for (var element in element) {
-        element.canMerge = true;
-      }
-    }
+    // for (var element in grid) {
+    //   for (var element in element) {
+    //     element.canMerge = true;
+    //   }
+    // }
   }
 
   @override

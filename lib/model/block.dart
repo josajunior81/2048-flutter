@@ -31,12 +31,11 @@ class Block {
   }
 
   num merge() {
+    canMerge = false;
     var total = blockNumber.value.value * 2;
     blockNumber.value = BlockNumber.next(blockNumber.value.value);
-    canMerge = false;
     animationController.reset();
     animationController.forward();
-
     return total;
   }
 
