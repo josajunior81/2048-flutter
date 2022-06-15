@@ -44,13 +44,6 @@ class GameBoard extends StatefulWidget {
 }
 
 class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    duration: const Duration(milliseconds: 500),
-    vsync: this,
-  );
-
-//  late final Animation<Color> _colorAnimation = ColorTween(begin:);
-
   double verticalSwipeMaxWidthThreshold = 50.0;
   double verticalSwipeMinDisplacement = 100.0;
   double verticalSwipeMinVelocity = 300.0;
@@ -71,7 +64,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   late final grid = List.generate(
       widget.blocksPerLine,
       (_) => List.filled(widget.blocksPerLine,
-          Block("", 0, 0, ValueNotifier<BlockNumber>(BlockNumber.ZERO))),
+          Block("", 0, 0, ValueNotifier<BlockNumber>(BlockNumber.ZERO), AnimationController(vsync: this))),
       growable: false); //<List<Block>>[];
   late final blocksList = <Block>[];
 
@@ -84,7 +77,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _controller.dispose();
+    grid.forEach((element) {
+      element.forEach((element) {
+        element.animationController.dispose();
+      });
+    });
     super.dispose();
   }
 
@@ -108,6 +105,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               var block = grid[i][j];
               block.isFree = false;
               block.blockNumber.value = BlockNumber.ONE;
+              block.animationController.reset();
+              block.animationController.forward();
             }
           }
         }
@@ -115,12 +114,12 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
   }
 
-  Widget createBlock(ValueNotifier<BlockNumber> listener) => Padding(
+  Widget createBlock(Block block) => Padding(
         padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         child: ValueListenableBuilder(
-            valueListenable: listener,
+            valueListenable: block.blockNumber,
             builder: (context, value, child) {
-              var blockNumber = (value as BlockNumber);
+              var blockNumber = block.blockNumber.value;
 
               // var _sizeAnimation = Tween(begin: cellSize, end: cellSize)
               //     .chain(TweenSequence([
@@ -134,16 +133,16 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               //           tween: Tween(begin: cellSize, end: cellSize),
               //           weight: 1),
               //     ]))
-              //     .animate(_controller);
+              //     .animate(block.animationController);
 
 
               var _colorAnimation =
-              blockNumber.value == BlockNumber.ZERO ?
-                blockNumber.backAnimation.animate(_controller) :
-              blockNumber.animation.animate(_controller);
+              blockNumber.value == 0 ?
+                blockNumber.backAnimation.animate(block.animationController) :
+              blockNumber.animation.animate(block.animationController);
 
               return AnimatedBuilder(
-                animation: _controller,
+                animation: block.animationController,
                 builder: (context, wid) => Container(
                   height: cellSize,
                   decoration: BoxDecoration(
@@ -169,10 +168,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     for (int i = 0; i < totalBlocks; i++) {
       var x = (i / widget.blocksPerLine).floor();
       var y = i % widget.blocksPerLine;
+      var controller = AnimationController(
+        duration: const Duration(milliseconds: 300),
+        vsync: this,
+      );
       var block =
-          Block("$x$y", x, y, ValueNotifier<BlockNumber>(BlockNumber.ZERO));
-      block.widget = createBlock(block.blockNumber);
+          Block("$x$y", x, y, ValueNotifier<BlockNumber>(BlockNumber.ZERO), controller);
+      block.widget = createBlock(block);
       grid[x][y] = block;
+      block.animationController.forward();
     }
   }
 
@@ -194,16 +198,12 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       var next = grid[x][i - 1];
       if (block.isFree && !next.isFree) {
         block.alloc(next.blockNumber.value);
-        _controller.reset();
-        _controller.forward();
         next.free();
       } else if (!block.isFree) {
         if (block.canMerge &&
             next.canMerge &&
             next.blockNumber.value.value == block.blockNumber.value.value) {
           points.value += block.merge();
-          _controller.reset();
-          _controller.forward();
           next.free();
         }
       }
@@ -217,16 +217,12 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       var next = grid[x][i + 1];
       if (block.isFree && !next.isFree) {
         block.alloc(next.blockNumber.value);
-        _controller.reset();
-        _controller.forward();
         next.free();
       } else if (!block.isFree) {
         if (block.canMerge &&
             next.canMerge &&
             next.blockNumber.value.value == block.blockNumber.value.value) {
           points.value += block.merge();
-          _controller.reset();
-          _controller.forward();
           next.free();
         }
       }
@@ -243,8 +239,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           var next = grid[y][i];
           if (!next.isFree && previous.isFree) {
             previous.alloc(next.blockNumber.value);
-            _controller.reset();
-            _controller.forward();
             next.free();
           } else if (!next.isFree && !previous.isFree) {
             if (previous.canMerge &&
@@ -252,8 +246,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 next.blockNumber.value.value ==
                     previous.blockNumber.value.value) {
               points.value += previous.merge();
-              _controller.reset();
-              _controller.forward();
               next.free();
             }
           }
@@ -272,8 +264,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           var next = grid[y + 1][i];
           if (next.isFree && !previous.isFree) {
             next.alloc(previous.blockNumber.value);
-            _controller.reset();
-            _controller.forward();
             previous.free();
           } else if (!next.isFree && !previous.isFree) {
             if (previous.canMerge &&
@@ -281,8 +271,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 next.blockNumber.value.value ==
                     previous.blockNumber.value.value) {
               points.value += next.merge();
-              _controller.reset();
-              _controller.forward();
               previous.free();
             }
           }

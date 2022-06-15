@@ -185,7 +185,7 @@ extension BlockNumberExtension on BlockNumber {
       case BlockNumber.SEVENTEEN:
         return ColorTween(begin: BlockNumber.SIXTEEN.color, end:  BlockNumber.SEVENTEEN.color);
       default:
-        return ColorTween(begin: BlockNumber.ZERO.color, end:  BlockNumber.ZERO.color);
+        return ColorTween(begin: BlockNumber.ZERO.color, end:  BlockNumber.ONE.color);
     }
   }
 
