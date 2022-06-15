@@ -15,6 +15,7 @@ class Block {
   bool canMerge = true;
   bool get available => isFree && canMerge;
   Widget widget = Container();
+  var neighbors = List.generate(4, (_) => null, growable: false);
 
   void free() {
     this.isFree = true;
