@@ -1,10 +1,12 @@
 import 'dart:math';
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:game_2048/ad_helper.dart';
 import 'package:game_2048/model/block.dart';
 import 'package:game_2048/model/enum_block.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'consts.dart';
 
@@ -48,14 +50,31 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   final _random = Random();
 
   late final totalBlocks = widget.blocksPerLine * widget.blocksPerLine;
-  late final boardSize = MediaQuery.of(context).size.width - 10;
-  late final cellSize = (boardSize / widget.blocksPerLine) - 12.0;
+  late final boardSize = MediaQuery.of(context).size.width * 0.9;
+  late final cellSize = (boardSize / widget.blocksPerLine);
+
+  late final infoSize = MediaQuery.of(context).size.height * 0.1;
   late List<List<Block>> grid;
 
   ValueNotifier<num> points = ValueNotifier(0);
   int movesCounter = 0;
   bool hasMoved = false;
   bool gameOver = false;
+
+  bool isBannerAdReady = false;
+  late final BannerAd bannerAd = BannerAd(
+    adUnitId: AdHelper.bannerAdUnitId,
+    request: AdRequest(),
+    size: AdSize.banner,
+    listener: AdHelper.adListener(),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    bannerAd.load();
+    debugPrint("width ${bannerAd.size.width}");
+  }
 
   @override
   void didChangeDependencies() {
@@ -70,7 +89,18 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         element.animationController.dispose();
       }
     }
+    bannerAd.dispose();
     super.dispose();
+  }
+
+  Future<InitializationStatus> initGoogleMobileAds() async {
+    final requestConfiguration = RequestConfiguration(
+        testDeviceIds: ["1EEE4D3585B9B6CF5E2F2A80E029FFD9"]);
+    await MobileAds.instance.updateRequestConfiguration(requestConfiguration);
+    final status = await MobileAds.instance.initialize();
+    debugPrint(
+        "ads ${(await MobileAds.instance.getRequestConfiguration()).testDeviceIds}");
+    return status;
   }
 
   newGame() {
@@ -116,8 +146,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               var colorAnimation = blockNumber.value == 0
                   ? blockNumber.backAnimation.animate(block.animationController)
                   : blockNumber.animation.animate(block.animationController);
-
-              var fontSize = blockNumber.value < 100 ? 50.0 : 40.0;
+              var fontSize = 50.0;
               var variation = block.canMerge ? 0 : 20;
               var sizeAnimation = TweenSequence<double>([
                 TweenSequenceItem(
@@ -136,12 +165,12 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               return AnimatedBuilder(
                 animation: block.animationController,
                 builder: (context, wid) => Container(
-                  height: cellSize,
+                  height: cellSize - 20,
                   decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(5.0),
                       color: colorAnimation.value),
                   child: Center(
-                    child: Text(
+                    child: AutoSizeText(
                       blockNumber.value == 0 ? "" : "${blockNumber.value}",
                       style: TextStyle(
                           fontSize: sizeAnimation.value,
@@ -291,9 +320,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   }
 
   isGameOver() {
-    setState(() => {
-      gameOver = !checkAvalibleMoves()
-    });
+    setState(() => {gameOver = !checkAvalibleMoves()});
   }
 
   bool checkAvalibleMoves() {
@@ -360,223 +387,280 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Stack(
-        children: [
-          Column(
+      body: FutureBuilder<void>(
+        future: initGoogleMobileAds(),
+        builder: (context, snapshot) {
+          return Stack(
             children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 50),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5.0),
-                          color: BlockNumber.NINE.color),
-                      child: const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: Text(
-                            "2048",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 64,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
+              Column(
+                children: [
+                  Container(
+                    height: infoSize + 20,
+                    margin: const EdgeInsets.symmetric(vertical: 30),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Container(
-                          width: 140,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: const BoxDecoration(
-                              color: Color.fromARGB(255, 240, 228, 218)),
-                          child: Column(
-                            children: [
-                              const Text(
-                                "Points",
-                                style: TextStyle(fontSize: 20),
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(5.0),
+                              color: BlockNumber.NINE.color),
+                          child: const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: AutoSizeText(
+                                "2048",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 64,
+                                    fontWeight: FontWeight.bold),
                               ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 5),
-                                child: ValueListenableBuilder(
-                                  valueListenable: points,
-                                  builder: (context, value, child) => Text(
-                                    "${points.value}",
-                                    style: const TextStyle(
-                                        fontSize: 40,
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                        Row(
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            TextButton(
-                                style: ButtonStyle(
-                                  foregroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          Colors.white),
-                                  backgroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          BlockNumber.ELEVEN.color),
+                            Expanded(
+                              flex: 3,
+                              child: Container(
+                                width: 180,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: const BoxDecoration(
+                                    color: Color.fromRGBO(240, 228, 218, 1)),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const AutoSizeText(
+                                          "Points: ",
+                                          style: TextStyle(fontSize: 20),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 5),
+                                          child: ValueListenableBuilder(
+                                            valueListenable: points,
+                                            builder: (context, value, child) =>
+                                                AutoSizeText(
+                                              "${points.value}",
+                                              style: const TextStyle(
+                                                  fontSize: 20,
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        const AutoSizeText(
+                                          "Record: ",
+                                          style: TextStyle(fontSize: 20),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 5),
+                                          child: ValueListenableBuilder(
+                                            valueListenable: points,
+                                            builder: (context, value, child) =>
+                                                AutoSizeText(
+                                              "${points.value}",
+                                              style: const TextStyle(
+                                                  fontSize: 20,
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                onPressed: () => newGame(),
-                                child: const Text("New Game")),
+                              ),
+                            ),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  FittedBox(
+                                    fit: BoxFit.fitHeight,
+                                    child: TextButton(
+                                        style: ButtonStyle(
+                                          foregroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              Colors.white),
+                                          backgroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              BlockNumber.ELEVEN.color),
+                                        ),
+                                        onPressed: () => newGame(),
+                                        child: const AutoSizeText("New Game", style: TextStyle(fontSize: 20),)),
+                                  )
+                                ],
+                              ),
+                            ),
                           ],
-                        )
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              Container(
-                height: boardSize,
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5.0),
-                    color: const Color(0xffb9aea0)),
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                child: GestureDetector(
-                  onVerticalDragStart: (dragDetails) {
-                    startVerticalDragDetails = dragDetails;
-                  },
-                  onVerticalDragUpdate: (dragDetails) {
-                    updateVerticalDragDetails = dragDetails;
-                  },
-                  onVerticalDragEnd: (endDetails) {
-                    double dx = updateVerticalDragDetails!.globalPosition.dx -
-                        startVerticalDragDetails!.globalPosition.dx;
-                    double dy = updateVerticalDragDetails!.globalPosition.dy -
-                        startVerticalDragDetails!.globalPosition.dy;
-                    double velocity = endDetails.primaryVelocity!;
-                    //Convert values to be positive
-                    if (dx < 0) dx = -dx;
-                    if (dy < 0) dy = -dy;
-                    double positiveVelocity =
-                        velocity < 0 ? -velocity : velocity;
-                    if (dx > verticalSwipeMaxWidthThreshold) return;
-                    if (dy < verticalSwipeMinDisplacement) return;
-                    if (positiveVelocity < verticalSwipeMinVelocity) return;
-                    if (velocity < 0) {
-                      swipe(Direction.up);
-                    } else {
-                      swipe(Direction.down);
-                    }
-                  },
-                  onHorizontalDragStart: (dragDetails) {
-                    startHorizontalDragDetails = dragDetails;
-                  },
-                  onHorizontalDragUpdate: (dragDetails) {
-                    updateHorizontalDragDetails = dragDetails;
-                  },
-                  onHorizontalDragEnd: (endDetails) {
-                    double dx = updateHorizontalDragDetails!.globalPosition.dx -
-                        startHorizontalDragDetails!.globalPosition.dx;
-
-                    double dy = updateHorizontalDragDetails!.globalPosition.dy -
-                        startHorizontalDragDetails!.globalPosition.dy;
-
-                    double velocity = endDetails.primaryVelocity!.toDouble();
-
-                    if (dx < 0) dx = -dx;
-                    if (dy < 0) dy = -dy;
-                    double positiveVelocity =
-                        velocity < 0 ? -velocity : velocity;
-
-                    if (dx < horizontalSwipeMinDisplacement) return;
-                    if (dy > horizontalSwipeMaxHeightThreshold) return;
-                    if (positiveVelocity < horizontalSwipeMinVelocity) return;
-
-                    if (velocity < 0) {
-                      swipe(Direction.left);
-                    } else {
-                      swipe(Direction.right);
-                    }
-                  },
-                  child: GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: widget.blocksPerLine,
-                      childAspectRatio: 1.0,
-                      mainAxisSpacing: 5.0,
-                      crossAxisSpacing: 5.0,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 5.0, horizontal: 0),
-                    itemCount: widget.blocksPerLine * widget.blocksPerLine,
-                    itemBuilder: (context, index) {
-                      var x = (index / widget.blocksPerLine).floor();
-                      var y = index % widget.blocksPerLine;
-                      return grid[x][y].widget;
-                    },
                   ),
-                ),
-              ),
-              const Text("Monetization"),
-            ],
-          ),
-          gameOver
-              ? Center(
-                  child: Container(
-                    padding: EdgeInsets.all(20),
-                    alignment: Alignment.center,
-                    height: 200,
-                    width: 300,
+                  Container(
+                    height: boardSize,
+                    width: boardSize,
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(5.0),
-                        color: const Color.fromRGBO(0, 0, 0, 0.5)),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 50),
-                          child: const Text("Game Over",
-                              style: TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
+                        color: const Color(0xffb9aea0)),
+                    margin: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 10),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                    child: GestureDetector(
+                      onVerticalDragStart: (dragDetails) {
+                        startVerticalDragDetails = dragDetails;
+                      },
+                      onVerticalDragUpdate: (dragDetails) {
+                        updateVerticalDragDetails = dragDetails;
+                      },
+                      onVerticalDragEnd: (endDetails) {
+                        double dx =
+                            updateVerticalDragDetails!.globalPosition.dx -
+                                startVerticalDragDetails!.globalPosition.dx;
+                        double dy =
+                            updateVerticalDragDetails!.globalPosition.dy -
+                                startVerticalDragDetails!.globalPosition.dy;
+                        double velocity = endDetails.primaryVelocity!;
+                        //Convert values to be positive
+                        if (dx < 0) dx = -dx;
+                        if (dy < 0) dy = -dy;
+                        double positiveVelocity =
+                            velocity < 0 ? -velocity : velocity;
+                        if (dx > verticalSwipeMaxWidthThreshold) return;
+                        if (dy < verticalSwipeMinDisplacement) return;
+                        if (positiveVelocity < verticalSwipeMinVelocity) return;
+                        if (velocity < 0) {
+                          swipe(Direction.up);
+                        } else {
+                          swipe(Direction.down);
+                        }
+                      },
+                      onHorizontalDragStart: (dragDetails) {
+                        startHorizontalDragDetails = dragDetails;
+                      },
+                      onHorizontalDragUpdate: (dragDetails) {
+                        updateHorizontalDragDetails = dragDetails;
+                      },
+                      onHorizontalDragEnd: (endDetails) {
+                        double dx =
+                            updateHorizontalDragDetails!.globalPosition.dx -
+                                startHorizontalDragDetails!.globalPosition.dx;
+
+                        double dy =
+                            updateHorizontalDragDetails!.globalPosition.dy -
+                                startHorizontalDragDetails!.globalPosition.dy;
+
+                        double velocity =
+                            endDetails.primaryVelocity!.toDouble();
+
+                        if (dx < 0) dx = -dx;
+                        if (dy < 0) dy = -dy;
+                        double positiveVelocity =
+                            velocity < 0 ? -velocity : velocity;
+
+                        if (dx < horizontalSwipeMinDisplacement) return;
+                        if (dy > horizontalSwipeMaxHeightThreshold) return;
+                        if (positiveVelocity < horizontalSwipeMinVelocity)
+                          return;
+
+                        if (velocity < 0) {
+                          swipe(Direction.left);
+                        } else {
+                          swipe(Direction.right);
+                        }
+                      },
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: widget.blocksPerLine,
+                          childAspectRatio: 1.0,
+                          mainAxisSpacing: 5.0,
+                          crossAxisSpacing: 5.0,
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            TextButton(
-                                style: ButtonStyle(
-                                  foregroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          Colors.white),
-                                  backgroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          BlockNumber.ELEVEN.color),
-                                ),
-                                onPressed: () => newGame(),
-                                child: const Text("New Game")),
-                            TextButton(
-                                style: ButtonStyle(
-                                  foregroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          Colors.white),
-                                  backgroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          Colors.red),
-                                ),
-                                onPressed: () => SystemNavigator.pop(),
-                                child: const Text("Finish")),
-                          ],
-                        ),
-                      ],
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 5.0, horizontal: 0),
+                        itemCount: widget.blocksPerLine * widget.blocksPerLine,
+                        itemBuilder: (context, index) {
+                          var x = (index / widget.blocksPerLine).floor();
+                          var y = index % widget.blocksPerLine;
+                          return grid[x][y].widget;
+                        },
+                      ),
                     ),
                   ),
-                )
-              : Container(),
-        ],
+                  if (isBannerAdReady)
+                    Container(
+                      alignment: Alignment.center,
+                      child: AdWidget(ad: bannerAd),
+                      width: bannerAd.size.width.toDouble(),
+                      height: bannerAd.size.height.toDouble(),
+                    ),
+                ],
+              ),
+              gameOver
+                  ? Center(
+                      child: Container(
+                        padding: EdgeInsets.all(20),
+                        alignment: Alignment.center,
+                        height: 200,
+                        width: 300,
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5.0),
+                            color: const Color.fromRGBO(0, 0, 0, 0.5)),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 50),
+                              child: const Text("Game Over",
+                                  style: TextStyle(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                TextButton(
+                                    style: ButtonStyle(
+                                      foregroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              Colors.white),
+                                      backgroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              BlockNumber.ELEVEN.color),
+                                    ),
+                                    onPressed: () => newGame(),
+                                    child: const Text("New Game")),
+                                TextButton(
+                                    style: ButtonStyle(
+                                      foregroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              Colors.white),
+                                      backgroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              Colors.red),
+                                    ),
+                                    onPressed: () => SystemNavigator.pop(),
+                                    child: const Text("Finish")),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Container(),
+            ],
+          );
+        },
       ),
     );
   }

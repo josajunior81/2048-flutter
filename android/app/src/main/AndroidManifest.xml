@@ -1,7 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.jojun.game_2048">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
    <application
-        android:label="game_2048"
+        android:label="2048"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
