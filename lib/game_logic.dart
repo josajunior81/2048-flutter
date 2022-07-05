@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
-import 'package:game_2048/block_widget.dart';
+import 'package:game_2048/widgets/block_widget.dart';
 import 'package:game_2048/model/game_model.dart';
 
 import 'model/block.dart';
@@ -41,15 +41,6 @@ class GameLogic {
         block.isFree = false;
         block.alloc(BlockNumber.ONE);
         found = true;
-        // for (int i = 0; i < blocksPerLine; i++) {
-        //   for (int j = 0; j < blocksPerLine; j++) {
-        //     if (i == row && j == col) {
-        //       var block = grid[i][j];
-        //       block.isFree = false;
-        //       block.alloc(BlockNumber.ONE);
-        //     }
-        //   }
-        // }
       }
     }
   }

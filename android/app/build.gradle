@@ -36,7 +36,7 @@ android.buildTypes.release.ndk.debugSymbolLevel = 'FULL'
 
 android {
     compileSdkVersion flutter.compileSdkVersion
-    ndkVersion flutter.ndkVersion
+    ndkVersion '24.0.8215888' //flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -78,6 +78,9 @@ android {
             buildTypes {
                 release {
                     signingConfig signingConfigs.release
+                    ndk {
+                        debugSymbolLevel 'SYMBOL_TABLE'
+                    }
                 }
             }
         }
@@ -89,7 +92,7 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'com.google.android.material:material:1.6.1'
     implementation 'com.google.android.gms:play-services-ads:21.0.0'

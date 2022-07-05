@@ -2,8 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 
-import 'model/block.dart';
-import 'model/enum_block.dart';
+import '../model/block.dart';
+import '../model/enum_block.dart';
 
 Widget blockWidget(Block block, double cellSize) => Padding(
   padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),

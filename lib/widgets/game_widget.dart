@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:game_2048/ad_helper.dart';
+import 'package:game_2048/helpers/ad_helper.dart';
 import 'package:game_2048/game_logic.dart';
 import 'package:game_2048/model/block.dart';
 import 'package:game_2048/model/enum_block.dart';
@@ -11,7 +11,7 @@ import 'package:game_2048/model/game_model.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
-import 'consts.dart';
+import '../helpers/consts.dart';
 
 class Game extends StatelessWidget {
   const Game({Key? key}) : super(key: key);
@@ -68,14 +68,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   @override
   void initState() {
-    super.initState();
     bannerAd.load();
-    debugPrint("width ${bannerAd.size.width}");
+    newGame();
+    super.initState();
   }
 
   @override
   void didChangeDependencies() {
-    newGame();
     super.didChangeDependencies();
   }
 
@@ -91,13 +90,10 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   }
 
   Future<InitializationStatus> initGoogleMobileAds() async {
-    final requestConfiguration = RequestConfiguration(
-        testDeviceIds: ["1EEE4D3585B9B6CF5E2F2A80E029FFD9"]);
-    await MobileAds.instance.updateRequestConfiguration(requestConfiguration);
-    final status = await MobileAds.instance.initialize();
-    debugPrint(
-        "ads ${(await MobileAds.instance.getRequestConfiguration()).testDeviceIds}");
-    return status;
+    // final requestConfiguration = RequestConfiguration(
+    //     testDeviceIds: ["1EEE4D3585B9B6CF5E2F2A80E029FFD9"]);
+    // await MobileAds.instance.updateRequestConfiguration(requestConfiguration);
+    return MobileAds.instance.initialize();
   }
 
   newGame() {
@@ -106,7 +102,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     setState(() {});
   }
 
-  swipe(Direction direction) async {
+  swipe(Direction direction) {
     if (direction == Direction.right) {
       logic.movesRight();
     } else if (direction == Direction.left) {
